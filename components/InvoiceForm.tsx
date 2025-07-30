@@ -3,50 +3,51 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { QuotationEmailSchema, type QuotationEmailData } from '@/lib/validations';
+import { InvoiceEmailSchema, type InvoiceEmailData } from '@/lib/validations';
 import toast from 'react-hot-toast';
-import { FileText, Loader2, Calculator, Calendar, Upload, User, AtSign, Send, Building } from 'lucide-react';
+import { Receipt, Loader2, CreditCard, Building, User, AtSign, Calendar, DollarSign, FileText, Send } from 'lucide-react';
 import { emailFromConfigs } from '@/lib/email-configs';
-import FileUpload from './FileUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 
-export default function QuotationForm() {
+export default function InvoiceForm() {
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const form = useForm<QuotationEmailData>({
-    resolver: zodResolver(QuotationEmailSchema) as any,
+  const form = useForm<InvoiceEmailData>({
+    resolver: zodResolver(InvoiceEmailSchema) as any,
     defaultValues: {
       fromConfig: 'contact',
-      supportPeriod: '30 days',
-      paymentTerms: '50% upfront, 50% on completion',
-      includePDF: false,
+      taxRate: '0%',
+      taxAmount: '$0.00',
+      lateFeeInfo: '2% per month on overdue amounts',
+      paymentTerms: 'Net 30 days',
+      paymentMethods: 'Bank transfer, Credit card, PayPal',
       servicesTable: `<table style="width: 100%; border-collapse: collapse;">
   <thead>
     <tr style="background-color: #f3f4f6;">
-      <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Service</th>
       <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Description</th>
+      <th style="padding: 12px; text-align: center; border: 1px solid #e5e7eb;">Qty</th>
+      <th style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">Rate</th>
       <th style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">Amount</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td style="padding: 12px; border: 1px solid #e5e7eb;">Web Development</td>
-      <td style="padding: 12px; border: 1px solid #e5e7eb;">Custom website development</td>
+      <td style="padding: 12px; border: 1px solid #e5e7eb;">Web Development Services</td>
+      <td style="padding: 12px; text-align: center; border: 1px solid #e5e7eb;">1</td>
+      <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">$5,000</td>
       <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">$5,000</td>
     </tr>
     <tr>
       <td style="padding: 12px; border: 1px solid #e5e7eb;">UI/UX Design</td>
-      <td style="padding: 12px; border: 1px solid #e5e7eb;">User interface and experience design</td>
+      <td style="padding: 12px; text-align: center; border: 1px solid #e5e7eb;">1</td>
+      <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">$2,000</td>
       <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">$2,000</td>
     </tr>
   </tbody>
@@ -54,129 +55,63 @@ export default function QuotationForm() {
     }
   });
 
-  const handleFileProcessed = (extractedData: any, file?: File) => {
-    // Store the uploaded file for attachment
-    if (file) {
-      setUploadedFile(file);
-      form.setValue('includePDF', true);
-    }
-    
-    // Populate form fields with extracted data
-    if (extractedData.recipientName) form.setValue('recipientName', extractedData.recipientName);
-    if (extractedData.quotationNumber) form.setValue('quotationNumber', extractedData.quotationNumber);
-    if (extractedData.quotationDate) form.setValue('quotationDate', extractedData.quotationDate);
-    if (extractedData.validUntil) form.setValue('validUntil', extractedData.validUntil);
-    if (extractedData.projectDescription) form.setValue('projectDescription', extractedData.projectDescription);
-    if (extractedData.totalAmount) form.setValue('totalAmount', extractedData.totalAmount);
-    if (extractedData.paymentTerms) form.setValue('paymentTerms', extractedData.paymentTerms);
-    
-    // Build services table from extracted services
-    if (extractedData.services && extractedData.services.length > 0) {
-      const tableHTML = `
-<table style="width: 100%; border-collapse: collapse;">
-  <thead>
-    <tr style="background-color: #f3f4f6;">
-      <th style="padding: 12px; text-align: left; border: 1px solid #e5e7eb;">Service</th>
-      <th style="padding: 12px; text-align: center; border: 1px solid #e5e7eb;">Qty</th>
-      <th style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">Rate</th>
-      <th style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">Amount</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${extractedData.services.map((service: any) => `
-    <tr>
-      <td style="padding: 12px; border: 1px solid #e5e7eb;">${service.description}</td>
-      <td style="padding: 12px; text-align: center; border: 1px solid #e5e7eb;">${service.quantity || '1'}</td>
-      <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">${service.rate || service.amount}</td>
-      <td style="padding: 12px; text-align: right; border: 1px solid #e5e7eb;">${service.amount}</td>
-    </tr>
-    `).join('')}
-  </tbody>
-</table>`;
-      form.setValue('servicesTable', tableHTML);
-    }
-    
-    toast.success('Form populated with extracted data!');
-  };
-
-  const onSubmit = async (data: QuotationEmailData) => {
+  const onSubmit = async (data: InvoiceEmailData) => {
     setIsLoading(true);
     try {
-      // Process the quotation template with the form data
+      // Process the invoice template with the form data
       const templateData = {
-        RECIPIENT_NAME: data.recipientName,
-        QUOTATION_NUMBER: data.quotationNumber,
-        QUOTATION_DATE: data.quotationDate,
-        VALID_UNTIL: data.validUntil,
-        PROJECT_DESCRIPTION: data.projectDescription,
+        CLIENT_NAME: data.clientName,
+        CLIENT_ADDRESS: data.clientAddress,
+        CLIENT_CITY_STATE_ZIP: data.clientCityStateZip,
+        CLIENT_EMAIL: data.to,
+        INVOICE_NUMBER: data.invoiceNumber,
+        INVOICE_DATE: data.invoiceDate,
+        DUE_DATE: data.dueDate,
         SERVICES_TABLE: data.servicesTable,
+        SUBTOTAL: data.subtotal,
+        TAX_RATE: data.taxRate,
+        TAX_AMOUNT: data.taxAmount,
         TOTAL_AMOUNT: data.totalAmount,
         PAYMENT_TERMS: data.paymentTerms,
-        SUPPORT_PERIOD: data.supportPeriod,
-        ACCEPT_QUOTATION_LINK: '#',
-        DISCUSS_QUOTATION_LINK: '#'
+        LATE_FEE_INFO: data.lateFeeInfo,
+        PAYMENT_METHODS: data.paymentMethods,
+        PAYMENT_LINK: '#',
+        DOWNLOAD_INVOICE_LINK: '#'
       };
 
-      // Get the quotation template
-      const { quotationTemplate, processTemplate } = await import('@/lib/templates');
-      const template = quotationTemplate;
+      // Get the invoice template
+      const { allTemplates, processTemplate } = await import('@/lib/MailForge-templates');
+      const template = allTemplates.invoice_send;
       const processedContent = processTemplate(template.template, templateData);
 
       // Send the email
-      if (uploadedFile && data.includePDF) {
-        // Send with attachment using FormData
-        const formData = new FormData();
-        formData.append('to', data.to);
-        formData.append('subject', `Quotation #${data.quotationNumber} - MailForge`);
-        formData.append('content', processedContent);
-        formData.append('fromName', data.fromName || '');
-        formData.append('fromConfig', data.fromConfig);
-        formData.append('attachment', uploadedFile);
+      const emailData = {
+        to: data.to,
+        subject: `Invoice #${data.invoiceNumber} - MailForge`,
+        content: processedContent,
+        fromName: data.fromName,
+        fromConfig: data.fromConfig
+      };
 
-        const response = await fetch('/api/send-email-with-attachment', {
-          method: 'POST',
-          body: formData,
-        });
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData),
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (response.ok) {
-          toast.success('Quotation sent successfully with attachment!');
-          form.reset();
-          setUploadedFile(null);
-        } else {
-          toast.error(result.error || 'Failed to send quotation');
-        }
+      if (response.ok) {
+        toast.success('Invoice sent successfully!');
+        form.reset();
       } else {
-        // Send without attachment using JSON
-        const emailData = {
-          to: data.to,
-          subject: `Quotation #${data.quotationNumber} - MailForge`,
-          content: processedContent,
-          fromName: data.fromName,
-          fromConfig: data.fromConfig
-        };
-
-        const response = await fetch('/api/send-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(emailData),
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-          toast.success('Quotation sent successfully!');
-          form.reset();
-        } else {
-          toast.error(result.error || 'Failed to send quotation');
-        }
+        toast.error(result.error || 'Failed to send invoice');
       }
     } catch (error) {
-      toast.error('An error occurred while sending the quotation');
-      console.error('Quotation send error:', error);
+      toast.error('An error occurred while sending the invoice');
+      console.error('Invoice send error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -184,33 +119,13 @@ export default function QuotationForm() {
 
   return (
     <div className="space-y-6">
-      {/* File Upload Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Upload className="h-5 w-5" />
-            <span>Upload Quotation Document</span>
-            <Badge variant="secondary">Optional</Badge>
-          </CardTitle>
-          <CardDescription>
-            Upload a PDF, Word document, or image to automatically extract quotation data
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FileUpload 
-            uploadType="quotation" 
-            onFileProcessed={handleFileProcessed}
-          />
-        </CardContent>
-      </Card>
-
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Client Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
-                <User className="h-5 w-5" />
+                <Building className="h-5 w-5" />
                 <span>Client Information</span>
               </CardTitle>
             </CardHeader>
@@ -240,7 +155,7 @@ export default function QuotationForm() {
 
                 <FormField
                   control={form.control}
-                  name="recipientName"
+                  name="clientName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center space-x-2">
@@ -249,77 +164,7 @@ export default function QuotationForm() {
                       </FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="John Doe"
-                          {...field}
-                          className="bg-muted/50"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quotation Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Calculator className="h-5 w-5" />
-                <span>Quotation Details</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="quotationNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quotation Number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="QUO-2025-001"
-                          {...field}
-                          className="bg-muted/50"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="quotationDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>Quotation Date</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date"
-                          {...field}
-                          className="bg-muted/50"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="validUntil"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valid Until</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date"
+                          placeholder="ABC Company Inc."
                           {...field}
                           className="bg-muted/50"
                         />
@@ -332,14 +177,13 @@ export default function QuotationForm() {
 
               <FormField
                 control={form.control}
-                name="projectDescription"
+                name="clientAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Project Description</FormLabel>
+                    <FormLabel>Client Address</FormLabel>
                     <FormControl>
-                      <Textarea 
-                        placeholder="Describe the project or services being quoted..."
-                        rows={3}
+                      <Input 
+                        placeholder="123 Business St, Suite 100"
                         {...field}
                         className="bg-muted/50"
                       />
@@ -348,6 +192,94 @@ export default function QuotationForm() {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="clientCityStateZip"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City, State, ZIP</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="New York, NY 10001"
+                        {...field}
+                        className="bg-muted/50"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Invoice Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Receipt className="h-5 w-5" />
+                <span>Invoice Details</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="invoiceNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Invoice Number</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="INV-2025-001"
+                          {...field}
+                          className="bg-muted/50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="invoiceDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center space-x-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>Invoice Date</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date"
+                          {...field}
+                          className="bg-muted/50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="dueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Date</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="date"
+                          {...field}
+                          className="bg-muted/50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <FormField
                 control={form.control}
@@ -367,17 +299,28 @@ export default function QuotationForm() {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
 
+          {/* Financial Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <DollarSign className="h-5 w-5" />
+                <span>Financial Details</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="totalAmount"
+                  name="subtotal"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Amount</FormLabel>
+                      <FormLabel>Subtotal</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="$7,000"
+                          placeholder="$7,000.00"
                           {...field}
                           className="bg-muted/50"
                         />
@@ -389,13 +332,49 @@ export default function QuotationForm() {
 
                 <FormField
                   control={form.control}
-                  name="paymentTerms"
+                  name="totalAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment Terms</FormLabel>
+                      <FormLabel>Total Amount</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="50% upfront, 50% on completion"
+                          placeholder="$7,577.50"
+                          {...field}
+                          className="bg-muted/50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="taxRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tax Rate</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="8.25%"
+                          {...field}
+                          className="bg-muted/50"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="taxAmount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tax Amount</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="$577.50"
                           {...field}
                           className="bg-muted/50"
                         />
@@ -408,13 +387,52 @@ export default function QuotationForm() {
 
               <FormField
                 control={form.control}
-                name="supportPeriod"
+                name="paymentTerms"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Support Period</FormLabel>
+                    <FormLabel>Payment Terms</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="30 days"
+                        placeholder="Net 30 days"
+                        {...field}
+                        className="bg-muted/50"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="paymentMethods"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center space-x-2">
+                      <CreditCard className="h-4 w-4" />
+                      <span>Payment Methods</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Bank transfer, Credit card, PayPal"
+                        {...field}
+                        className="bg-muted/50"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lateFeeInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Late Fee Information</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="2% per month on overdue amounts"
                         {...field}
                         className="bg-muted/50"
                       />
@@ -469,10 +487,7 @@ export default function QuotationForm() {
                   name="fromName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="flex items-center space-x-2">
-                        <Building className="h-4 w-4" />
-                        <span>From Name</span>
-                      </FormLabel>
+                      <FormLabel>From Name</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Your Name or Company"
@@ -488,43 +503,13 @@ export default function QuotationForm() {
             </CardContent>
           </Card>
 
-          {/* Attachment Option */}
-          {uploadedFile && (
-            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/50">
-              <CardContent className="pt-6">
-                <FormField
-                  control={form.control}
-                  name="includePDF"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                          📎 Include uploaded file as attachment
-                        </FormLabel>
-                        <p className="text-xs text-blue-700 dark:text-blue-300">
-                          Attach "{uploadedFile.name}" to the quotation email
-                        </p>
-                      </div>
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          )}
-
           {/* Submit Button */}
           <div className="flex justify-end pt-4 border-t">
             <Button
               type="submit"
               disabled={isLoading}
               size="lg"
-              className="min-w-[160px] bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+              className="min-w-[160px] bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-lg hover:shadow-xl transition-all duration-200"
             >
               {isLoading ? (
                 <>
@@ -533,8 +518,8 @@ export default function QuotationForm() {
                 </>
               ) : (
                 <>
-                  <Send className="mr-2 h-4 w-4" />
-                  {uploadedFile && form.watch('includePDF') ? 'Send Quotation with Attachment' : 'Send Quotation'}
+                  <Receipt className="mr-2 h-4 w-4" />
+                  Send Invoice
                 </>
               )}
             </Button>
@@ -544,4 +529,4 @@ export default function QuotationForm() {
     </div>
   );
 }
-    
+   

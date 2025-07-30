@@ -1,5 +1,5 @@
 {
-  "name": "mailforge",
+  "name": "my-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -46,11 +46,11 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/node": "^20.19.9",
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }
